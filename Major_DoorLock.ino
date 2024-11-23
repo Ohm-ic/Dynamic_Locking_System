@@ -1,5 +1,12 @@
-
-// Includes for libraries
+/**
+*@author  Hariom Agrahari (hariomagrahari06@gmail.com)
+*@brief   Arduino Sketch 
+*@version 1.0
+*@date 2024-11-24
+*
+*@copyright CopyRight (c) 2024
+*
+*/
 #include <Base32-Decode.h>
 #include <Wire.h>  
 #include "SH1106Wire.h"
@@ -7,14 +14,12 @@
 #include <TOTP.h>
 #include <WiFi.h>
 #include <NetworkClient.h>
-#include <WebServer.h>
 #include <time.h>
 
 // Wi-Fi Config
 const char* ssid = "ESPP";
 const char* password = "Nasa@2023";
 
-WebServer server(80);
 
 // Secret Key
 String secretKey = "JBSWY3DPEHPK3PXP";  // Base32-encoded secret key
@@ -34,7 +39,6 @@ QRcodeOled qrcode(&display);  // QR code for OLED
 
 // Task handles
 TaskHandle_t totpTaskHandle = NULL;
-TaskHandle_t webServerTaskHandle = NULL;
 TaskHandle_t buttonRelayTaskHandle = NULL;
 
 // Mutex for protecting shared resources
@@ -80,13 +84,6 @@ void totpTask(void *parameter) {
     }
 }
 
-// Web server task
-void webServerTask(void *parameter) {
-    while (1) {
-        server.handleClient();
-        vTaskDelay(pdMS_TO_TICKS(10));
-    }
-}
 
 // Button and relay control task
 void buttonRelayTask(void *parameter) {
@@ -161,12 +158,6 @@ void setup() {
     totp = TOTP(hmacKey, sizeof(hmacKey), 30);
     qrcode.init();
 
-    server.on("/", HTTP_GET, [](){
-        server.send(200, "text/html", "<h1>Hello ESP 32....</h1>");
-    });
-
-    server.begin();
-
     xTaskCreatePinnedToCore(
         totpTask,
         "TOTPTask",
@@ -177,15 +168,6 @@ void setup() {
         1
     );
 
-    xTaskCreatePinnedToCore(
-        webServerTask,
-        "WebServerTask",
-        8192,
-        NULL,
-        1,
-        &webServerTaskHandle,
-        0
-    );
 
     xTaskCreatePinnedToCore(
         buttonRelayTask,
