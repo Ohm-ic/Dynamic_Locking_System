@@ -1,161 +1,120 @@
-# README for ESP32 Door Lock System
-
-## Overview
-
-This project implements a secure door lock system using an ESP32 microcontroller. It combines a Time-based One-Time Password (TOTP) generator, a web interface, and physical controls with a relay and button. The project features a QR code display for TOTP codes, a responsive web server, and a button to control a relay for door locking/unlocking.
+Here is a detailed README file for your project:
 
 ---
+
+# ESP32 TOTP-Based Door Lock System
+
+This project implements a Time-based One-Time Password (TOTP) system on an ESP32 module to control a door lock. The project integrates features like MQTT communication, an SH1106 OLED display, and hardware button inputs. 
 
 ## Features
+- **Wi-Fi Connectivity:** The ESP32 connects to a Wi-Fi network for NTP-based time synchronization and MQTT communication.
+- **TOTP Authentication:** Generates a TOTP every 30 seconds based on a pre-shared secret key.
+- **SH1106 OLED Display:** Displays the current TOTP as a QR code.
+- **Relay Control:** Activates the relay to unlock the door upon button press or receiving an MQTT command.
+- **Multi-Tasking:** Utilizes FreeRTOS tasks for efficient resource utilization.
+- **Hardware Mutexes:** Ensures synchronized access to shared resources like the display and relay.
 
+## Hardware Setup
+### Components
+- **ESP32 Module**
+- **SH1106 OLED Display**
+  - **SDA:** GPIO 21
+  - **SCL:** GPIO 22
+- **Relay Module**
+  - **Control Pin:** GPIO 5
+- **Push Button**
+  - **Input Pin:** GPIO 17
+
+### Wiring Diagram
+| Component           | ESP32 Pin |
+|---------------------|-----------|
+| OLED SDA            | GPIO 21   |
+| OLED SCL            | GPIO 22   |
+| Relay Control Pin   | GPIO 5    |
+| Button Input        | GPIO 17   |
+
+## Software Details
+
+### Dependencies
+The project uses the following libraries:
+- **Wi-Fi:** For network connectivity.
+- **MQTT:** For message communication.
+- **NTP:** For time synchronization.
+- **TOTP:** For generating one-time passwords.
+- **SH1106 OLED Display:** For displaying the TOTP and QR codes.
+- **Base32 Decoder:** For decoding the TOTP secret key.
+
+### Configuration
+
+#### Wi-Fi Configuration
+Update the following variables in the code:
+```cpp
+const char* ssid = "your_SSID";
+const char* password = "your_PASSWORD";
+```
+
+#### MQTT Configuration
+Set up the MQTT broker details:
+```cpp
+const char* mqtt_server = "mqtt.eclipseprojects.io";
+const int mqtt_port = 1883;
+const char* mqtt_topic = "esp32/subscribe";
+```
+
+#### TOTP Secret Key
+Replace the placeholder secret key with your Base32-encoded secret:
+```cpp
+String secretKey = "JBSWY3DPEHPK3PXP";
+```
+
+### FreeRTOS Tasks
+- **`totpTask`**
+  - Generates and displays the TOTP QR code on the OLED every 30 seconds.
+- **`buttonRelayTask`**
+  - Monitors the button and activates the relay for 10 seconds when pressed.
+- **`mqttTask`**
+  - Handles MQTT communication and relay activation based on received messages.
+
+### Key Functions
 1. **TOTP Generation:**
-   - Generates a new TOTP every 30 seconds using a Base32-encoded secret key.
-   - Displays the TOTP as a QR code on an SH1106 OLED display.
+   - Generates a new TOTP every 30 seconds using the NTP-synced time.
+2. **MQTT Control:**
+   - Activates the relay when an "ON" command is received.
+3. **Button Control:**
+   - Activates the relay for 10 seconds when the button is pressed.
+4. **OLED Display:**
+   - Displays the generated TOTP as a QR code.
 
-2. **Web Server:**
-   - Simple HTTP server running on the ESP32.
-   - Displays a basic webpage accessible at the ESP32's local IP.
+## Getting Started
 
-3. **Relay and Button Control:**
-   - A button controls a relay that activates for 10 seconds when pressed.
-   - The OLED display turns off while the relay is active and resumes afterward.
+### Prerequisites
+1. Install the Arduino IDE or ESP32 development environment.
+2. Install required libraries:
+   - SH1106Wire
+   - Base32 Decoder
+   - PubSubClient (for MQTT)
+   - TOTP
 
-4. **Wi-Fi Connectivity:**
-   - Connects to a predefined Wi-Fi network.
-   - Synchronizes the system time with an NTP server.
+### Uploading the Code
+1. Connect your ESP32 to the computer via USB.
+2. Open the project in the Arduino IDE.
+3. Select the appropriate board and COM port.
+4. Compile and upload the code.
 
-5. **Concurrency with FreeRTOS:**
-   - Three tasks run concurrently for TOTP generation, web server handling, and button/relay control.
-   - Uses FreeRTOS mechanisms like task prioritization and mutexes.
+### Running the Project
+1. Power the ESP32 module.
+2. The device will connect to Wi-Fi and synchronize time with an NTP server.
+3. A TOTP will be generated every 30 seconds and displayed as a QR code on the OLED screen.
+4. Pressing the button or receiving an MQTT "ON" command will activate the relay for 10 seconds.
 
----
+## Notes
+- Ensure that the relay module is correctly powered.
+- Use a proper power source for stable OLED operation.
+- Keep the secret key secure to maintain the integrity of the TOTP system.
 
-## Hardware Requirements
-
-1. **ESP32 Dev Board**
-2. **SH1106 OLED Display**
-3. **Relay Module**
-4. **Push Button**
-5. **Wi-Fi Network**
-
----
-
-## Software Requirements
-
-1. **Arduino IDE** with ESP32.
-2. **Libraries:**
-   - `Base32-Decode`
-   - `Wire`
-   - `SH1106Wire`
-   - `qrcodeoled`
-   - `TOTP`
-   - `WiFi`
-   - `NetworkClient`
-   - `WebServer`
-   - `time`
+## License
+This project is licensed under the MIT License. See the LICENSE file for more details.
 
 ---
 
-## Pin Configuration
-
-| Component     | Pin            |
-|---------------|----------------|
-| OLED (SDA)    | `GPIO21`        |
-| OLED (SCL)    | `GPIO22`       |
-| Relay         | `GPIO5`        |
-| Button        | `GPIO17`       |
-
----
-
-## Code Explanation
-
-### 1. **TOTP Generation**
-- A Base32-encoded secret key is decoded during setup.
-- The decoded key is used to initialize the `TOTP` library.
-- A FreeRTOS task (`totpTask`) generates a new TOTP every 30 seconds.
-- The TOTP is displayed on the OLED as a QR code.
-
-### 2. **Web Server**
-- A simple web server runs on port 80.
-- Responds to HTTP GET requests at `/` with a basic HTML page.
-- Managed in a separate FreeRTOS task (`webServerTask`).
-
-### 3. **Relay and Button Control**
-- A push button activates the relay for 10 seconds.
-- While the relay is active, the OLED display turns off.
-- After the relay deactivates, the OLED display resumes.
-
-### 4. **FreeRTOS Tasks**
-- **`totpTask`**: Handles TOTP generation and OLED updates.
-- **`webServerTask`**: Manages HTTP server requests.
-- **`buttonRelayTask`**: Handles button presses and relay control.
-
-### 5. **Wi-Fi Connectivity**
-- The ESP32 connects to the predefined SSID and password.
-- Synchronizes time using the `configTime` function.
-
----
-
-## How to Use
-
-1. **Setup Hardware:**
-   - Connect the components as per the pin configuration.
-
-2. **Upload Code:**
-   - Install the required libraries.
-   - Upload the code to the ESP32 using Arduino IDE or ESP-IDF.
-
-3. **Run the System:**
-   - Power the ESP32.
-   - Connect to the Wi-Fi network.
-
-4. **Access Features:**
-   - View the TOTP QR code on the OLED.
-   - Access the web server by entering the ESP32's IP address in a browser.
-   - Press the button to activate the relay.
-
----
-
-## Customization
-
-1. **Wi-Fi Credentials:**
-   - Modify `ssid` and `password` in the code to match your network.
-
-2. **TOTP Secret Key:**
-   - Replace the `secretKey` with your own Base32-encoded key.
-
-3. **Timing:**
-   - Adjust the relay activation time by modifying the delay in `buttonRelayTask`.
-
----
-
-## Example Outputs
-
-1. **Serial Monitor:**
-   - Displays Wi-Fi connection status, generated TOTPs, and timestamps.
-
-2. **OLED Display:**
-   - Shows a QR code representing the current TOTP.
-
-3. **Web Server:**
-   - Accessible via the ESP32's IP address, displaying a "Hello ESP32" message.
-
----
-
-## Troubleshooting
-
-- **Wi-Fi Not Connecting:**
-  - Ensure correct SSID and password.
-  - Verify signal strength.
-
-- **No TOTP Display:**
-  - Check the OLED connections.
-  - Ensure the secret key is correctly encoded in Base32.
-
-- **Button Not Working:**
-  - Verify the button and relay connections.
-  - Check for debounce issues.
-
----
-
-This README provides a comprehensive guide to the ESP32 Door Lock System, ensuring ease of setup and operation.
+This README provides a comprehensive guide to set up and run your project. Let me know if you'd like to customize or extend it further!
